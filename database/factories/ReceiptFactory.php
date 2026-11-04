@@ -1,0 +1,27 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Models\Receipt;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends Factory<Receipt>
+ */
+class ReceiptFactory extends Factory
+{
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        return [
+            'path' => 'receipts/'.fake()->uuid().'.jpg',
+            'mime' => 'image/jpeg',
+            'size' => 1024,
+            'source' => 'computer',
+        ];
+    }
+}
