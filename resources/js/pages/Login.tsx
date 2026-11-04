@@ -17,7 +17,7 @@ export default function Login() {
                         <h1 className="mt-4 font-display text-[20px] font-semibold">
                             نظام المحاسبة
                         </h1>
-                        <p className="mt-0.5 text-[13px] text-gold">
+                        <p className="mt-0.5 text-[13px] text-gold-ink">
                             الرواتب · الحضور · المشتريات
                         </p>
                     </div>

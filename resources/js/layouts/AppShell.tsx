@@ -72,7 +72,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                         className="order-1 flex shrink-0 items-center gap-2.5"
                     >
                         <img
-                            src="/img/logo-mark.png"
+                            src="/img/logo-mark.svg"
                             alt=""
                             className="h-7 w-auto"
                         />
@@ -80,7 +80,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                             <span className="font-display text-[18px] font-bold">
                                 الرعاية الذكية
                             </span>
-                            <span className="text-[11.5px] text-gold">
+                            <span className="text-[11.5px] text-gold-ink">
                                 نظام المحاسبة
                             </span>
                         </span>

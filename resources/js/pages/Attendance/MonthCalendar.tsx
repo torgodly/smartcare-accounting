@@ -193,7 +193,7 @@ export function MonthCalendar({
                                 aria-label={`يوم ${day}`}
                             >
                                 {date === today ? (
-                                    <span className="num flex size-[26px] items-center justify-center rounded-full bg-gold text-[13px] font-semibold text-white">
+                                    <span className="num flex size-[26px] items-center justify-center rounded-full bg-gold text-[13px] font-semibold text-ink">
                                         {day}
                                     </span>
                                 ) : (

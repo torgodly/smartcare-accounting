@@ -13,10 +13,13 @@
     --line: #d9e2e8;
     --ink: #2d3134;
     --muted: #62707a;
-    --accent: #0b7fa0;
-    --accent-soft: #dff1f7;
-    --brand: #11a4c5;
-    --gold: #e09822;
+    /* Brand: logo cyan + amber. Deeper shades carry white text and small text. */
+    --accent: #0779a6;
+    --accent-hover: #06688f;
+    --accent-soft: #ddf6ff;
+    --brand: #48dfff;
+    --gold: #ffb63c;
+    --gold-ink: #a8660a;
     --ok: #1f7a3a;
     --ok-soft: #dff3e5;
     --warn: #a15c00;
@@ -45,6 +48,8 @@
     --color-accent-soft: var(--accent-soft);
     --color-brand: var(--brand);
     --color-gold: var(--gold);
+    --color-gold-ink: var(--gold-ink);
+    --color-accent-hover: var(--accent-hover);
     --color-ok: var(--ok);
     --color-ok-soft: var(--ok-soft);
     --color-warn: var(--warn);
