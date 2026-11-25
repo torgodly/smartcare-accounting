@@ -78,6 +78,9 @@ export function InvoiceTable({
                                         <StatusPill kind="no_receipt" />
                                     )}
                                 </div>
+                                <div className="text-[12.5px] text-muted">
+                                    {invoice.source_label}
+                                </div>
                             </td>
                             <td className="hidden max-w-[240px] truncate px-3 py-2.5 text-muted sm:table-cell">
                                 {invoice.reason || '—'}

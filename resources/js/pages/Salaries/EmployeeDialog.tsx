@@ -1,4 +1,4 @@
-import { router, useForm } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
@@ -10,13 +10,17 @@ import { AppDialog } from '@/components/AppDialog';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Field } from '@/components/Field';
 import { MoneyInput } from '@/components/MoneyInput';
+import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { formatNumber, parseMoney } from '@/lib/money';
-import type { Employee } from '@/types';
+import type { Employee, PaymentMethod, Region } from '@/types';
 
 type EmployeeForm = {
     name: string;
     job_title: string;
+    region: Region;
+    payment_method: PaymentMethod;
+    account_number: string;
     base_salary: string;
     start_month: string;
     absence_day_rate: string;
@@ -33,9 +37,15 @@ export function EmployeeDialog({
     defaultStartMonth: string;
     onOpenChange: (open: boolean) => void;
 }) {
+    const { region, regions, paymentMethods, auth } = usePage().props;
+    const isAdmin = auth.user?.is_admin ?? false;
+    const defaultRegion: Region = region === 'all' ? 'east' : region;
     const form = useForm<EmployeeForm>({
         name: '',
         job_title: '',
+        region: defaultRegion,
+        payment_method: 'cash',
+        account_number: '',
         base_salary: '',
         start_month: defaultStartMonth,
         absence_day_rate: '',
@@ -52,6 +62,9 @@ export function EmployeeDialog({
         form.setData({
             name: employee?.name ?? '',
             job_title: employee?.job_title ?? '',
+            region: employee?.region ?? defaultRegion,
+            payment_method: employee?.payment_method ?? 'cash',
+            account_number: employee?.account_number ?? '',
             base_salary: employee ? String(employee.base_salary) : '',
             start_month: employee?.start_month ?? defaultStartMonth,
             absence_day_rate:
@@ -166,6 +179,79 @@ export function EmployeeDialog({
                             }
                         />
                     </Field>
+                    {isAdmin && (
+                        <Field
+                            label="المنطقة"
+                            htmlFor="employee-region"
+                            error={form.errors.region}
+                        >
+                            <NativeSelect
+                                id="employee-region"
+                                value={form.data.region}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'region',
+                                        event.target.value as Region,
+                                    )
+                                }
+                            >
+                                {regions.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </Field>
+                    )}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <Field
+                            label="نوع الخلاص"
+                            htmlFor="employee-method"
+                            error={form.errors.payment_method}
+                        >
+                            <NativeSelect
+                                id="employee-method"
+                                value={form.data.payment_method}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'payment_method',
+                                        event.target.value as PaymentMethod,
+                                    )
+                                }
+                            >
+                                {paymentMethods.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </Field>
+                        <Field
+                            label="رقم الحساب (اختياري)"
+                            htmlFor="employee-account"
+                            error={form.errors.account_number}
+                        >
+                            <input
+                                id="employee-account"
+                                dir="ltr"
+                                className="field-input text-right font-mono"
+                                maxLength={64}
+                                value={form.data.account_number}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'account_number',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                        </Field>
+                    </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <Field
                             label="الراتب الأساسي (د.ل)"

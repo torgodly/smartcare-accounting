@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use App\Models\Setting;
 use App\Services\Months;
+use App\Services\PaymentMethods;
+use App\Services\Regions;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -43,11 +45,20 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $user !== null ? ['id' => $user->id, 'name' => $user->name, 'email' => $user->email] : null,
+                'user' => $user !== null ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'is_admin' => $user->isAdmin(),
+                    'region' => $user->region,
+                ] : null,
             ],
             'month' => Months::orCurrent($request->query('month')),
             'currentMonth' => Months::current(),
             'today' => now()->toDateString(),
+            'region' => Regions::current($request),
+            'regions' => Regions::options(),
+            'paymentMethods' => PaymentMethods::options(),
             'settings' => fn () => $user !== null ? Setting::workHours() : null,
         ];
     }

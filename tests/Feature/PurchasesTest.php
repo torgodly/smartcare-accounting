@@ -3,6 +3,7 @@
 use App\Models\Invoice;
 use App\Models\PurchaseGroup;
 use App\Models\Receipt;
+use App\Models\Treasury;
 use App\Models\User;
 use App\Services\RecurringInvoices;
 use App\Services\SerialNumber;
@@ -50,11 +51,11 @@ test('invoices get CODE-YYMM-NNN serials per group and month', function () {
     $group = PurchaseGroup::factory()->create(['code' => 'IN']);
 
     foreach (['أحبار', 'مياه'] as $title) {
-        $this->post(route('invoices.store', $group), ['month' => '2026-11', 'title' => $title, 'price' => 10, 'type' => 'once'])
+        $this->post(route('invoices.store', $group), ['month' => '2026-11', 'title' => $title, 'price' => 10, 'type' => 'once', 'treasury_id' => Treasury::query()->value('id')])
             ->assertRedirect()
             ->assertInertiaFlash('success', 'تمت إضافة الفاتورة');
     }
-    $this->post(route('invoices.store', $group), ['month' => '2026-12', 'title' => 'x', 'price' => 10, 'type' => 'once']);
+    $this->post(route('invoices.store', $group), ['month' => '2026-12', 'title' => 'x', 'price' => 10, 'type' => 'once', 'treasury_id' => Treasury::query()->value('id')]);
 
     expect(Invoice::query()->orderBy('id')->pluck('serial')->all())->toBe(['IN-2611-001', 'IN-2611-002', 'IN-2612-001']);
 });
@@ -78,7 +79,7 @@ test('invoice validation messages are Arabic', function () {
 
 test('the group page lists the month invoices oldest first', function () {
     $group = PurchaseGroup::factory()->create(['code' => 'IN']);
-    app(SerialNumber::class)->createInvoice($group, '2026-11', ['title' => 'أول', 'price' => 10, 'type' => 'once']);
+    app(SerialNumber::class)->createInvoice($group, '2026-11', ['title' => 'أول', 'price' => 10, 'type' => 'once', 'treasury_id' => Treasury::query()->value('id')]);
     app(SerialNumber::class)->createInvoice($group, '2026-11', ['title' => 'ثاني', 'price' => 20, 'type' => 'recurring']);
 
     $this->get(route('purchase-groups.show', ['group' => $group, 'month' => '2026-11']))
@@ -94,7 +95,7 @@ test('updating an invoice with a new receipt deletes the old file', function () 
     $old = Receipt::factory()->create();
     Storage::disk('local')->put($old->path, 'old');
     $new = Receipt::factory()->create();
-    $invoice = app(SerialNumber::class)->createInvoice($group, '2026-11', ['title' => 'a', 'price' => 5, 'type' => 'once', 'receipt_id' => $old->id]);
+    $invoice = app(SerialNumber::class)->createInvoice($group, '2026-11', ['title' => 'a', 'price' => 5, 'type' => 'once', 'receipt_id' => $old->id, 'treasury_id' => Treasury::query()->value('id')]);
 
     $this->put(route('invoices.update', $invoice), ['title' => 'b', 'price' => 6, 'type' => 'recurring', 'receipt_id' => $new->id])
         ->assertRedirect();
@@ -134,7 +135,7 @@ test('recurring invoices are copied once into the next month without receipt', f
     $group = PurchaseGroup::factory()->create(['code' => 'IN']);
     $receipt = Receipt::factory()->create();
     $root = app(SerialNumber::class)->createInvoice($group, '2026-10', ['title' => 'إنترنت', 'price' => 350, 'type' => 'recurring', 'receipt_id' => $receipt->id]);
-    app(SerialNumber::class)->createInvoice($group, '2026-10', ['title' => 'مرة', 'price' => 10, 'type' => 'once']);
+    app(SerialNumber::class)->createInvoice($group, '2026-10', ['title' => 'مرة', 'price' => 10, 'type' => 'once', 'treasury_id' => Treasury::query()->value('id')]);
 
     $this->get(route('purchase-groups.show', ['group' => $group, 'month' => '2026-11']))->assertOk();
     $this->get(route('purchase-groups.show', ['group' => $group, 'month' => '2026-11']))->assertOk();

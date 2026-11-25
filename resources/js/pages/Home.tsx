@@ -7,9 +7,12 @@ import { useMonth } from '@/hooks/use-month';
 import AppShell from '@/layouts/AppShell';
 import { monthLabel, monthName } from '@/lib/months';
 import { index as attendanceIndex } from '@/routes/attendance';
+import { index as custodiesIndex } from '@/routes/custodies';
+import { index as expensesIndex } from '@/routes/expenses';
 import { index as purchasesIndex } from '@/routes/purchase-groups';
 import { index as salariesIndex } from '@/routes/salaries';
-import type { PurchaseSummary } from '@/types';
+import { index as treasuriesIndex } from '@/routes/treasuries';
+import type { PurchaseSummary, Treasury } from '@/types';
 
 type Props = {
     salaries: {
@@ -21,6 +24,9 @@ type Props = {
         partial: number;
     };
     purchases: PurchaseSummary & { groups: number };
+    expenses: PurchaseSummary & { groups: number };
+    treasuries: { items: Treasury[]; total: number };
+    custodies: { open: number; cash: number; pending: number };
     attendance: {
         absent_days: number;
         excused_days: number;
@@ -28,7 +34,14 @@ type Props = {
     };
 };
 
-export default function Home({ salaries, purchases, attendance }: Props) {
+export default function Home({
+    salaries,
+    purchases,
+    expenses,
+    treasuries,
+    custodies,
+    attendance,
+}: Props) {
     const { month } = useMonth();
 
     return (
@@ -39,7 +52,7 @@ export default function Home({ salaries, purchases, attendance }: Props) {
                     {monthLabel(month)}
                 </h1>
                 <p className="mt-1.5 text-[14px] text-muted">
-                    ملخص الرواتب والمشتريات لهذا الشهر
+                    ملخص الرواتب والمشتريات والمصروفات والخزائن لهذا الشهر
                 </p>
             </div>
 
@@ -93,6 +106,88 @@ export default function Home({ salaries, purchases, attendance }: Props) {
                                     ? 'text-warn'
                                     : ''
                             }
+                        />
+                    </StatTile>
+                </ModuleCard>
+
+                <ModuleCard
+                    title="المصروفات"
+                    href={expensesIndex.url({ query: { month } })}
+                    pill={
+                        <StatusPill kind="accent">
+                            {expenses.groups} مجموعة
+                        </StatusPill>
+                    }
+                    footer={`${expenses.recurring} متكررة · ${expenses.once} لمرة واحدة`}
+                >
+                    <StatTile label="الإجمالي">
+                        <Money value={expenses.total} size="tile" />
+                    </StatTile>
+                    <StatTile label="الفواتير">
+                        <Count value={expenses.count} />
+                    </StatTile>
+                    <StatTile label="بلا إيصال">
+                        <Count
+                            value={expenses.missing_receipts}
+                            className={
+                                expenses.missing_receipts > 0 ? 'text-warn' : ''
+                            }
+                        />
+                    </StatTile>
+                </ModuleCard>
+
+                <ModuleCard
+                    title="الخزائن"
+                    href={treasuriesIndex.url({ query: { month } })}
+                    pill={
+                        <StatusPill kind="accent">
+                            {treasuries.items.length} خزينة
+                        </StatusPill>
+                    }
+                    footer="الرصيد الحالي لكل خزينة"
+                >
+                    <StatTile label="إجمالي الأرصدة">
+                        <Money
+                            value={treasuries.total}
+                            size="tile"
+                            tone={treasuries.total < 0 ? 'bad' : 'default'}
+                        />
+                    </StatTile>
+                    {treasuries.items.slice(0, 2).map((treasury) => (
+                        <StatTile
+                            key={treasury.id}
+                            label={`${treasury.name} · ${treasury.region_label}`}
+                        >
+                            <Money
+                                value={treasury.balance}
+                                size="tile"
+                                tone={treasury.balance < 0 ? 'bad' : 'default'}
+                            />
+                        </StatTile>
+                    ))}
+                </ModuleCard>
+
+                <ModuleCard
+                    title="العُهد"
+                    href={custodiesIndex.url({ query: { month } })}
+                    pill={
+                        <StatusPill kind="accent">
+                            {custodies.open} مفتوحة
+                        </StatusPill>
+                    }
+                    footer="جدّد العهدة بعد إدخال الفواتير لتعويض المستلم من الخزينة"
+                >
+                    <StatTile label="عُهد مفتوحة">
+                        <Count value={custodies.open} />
+                    </StatTile>
+                    <StatTile label="النقد مع المستلمين">
+                        <Money value={custodies.cash} size="tile" />
+                    </StatTile>
+                    <StatTile label="بانتظار التجديد">
+                        <Money
+                            value={custodies.pending}
+                            size="tile"
+                            tone={custodies.pending > 0 ? 'warn' : 'default'}
                         />
                     </StatTile>
                 </ModuleCard>

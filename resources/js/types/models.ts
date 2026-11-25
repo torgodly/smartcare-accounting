@@ -6,10 +6,25 @@ export type AttendanceMode = 'time' | 'notime' | 'none';
 
 export type InvoiceType = 'once' | 'recurring';
 
+export type Region = 'east' | 'west';
+
+export type RegionFilter = Region | 'all';
+
+export type PaymentMethod = 'cash' | 'bank_transfer' | 'cheque';
+
+export type GroupKind = 'purchase' | 'expense';
+
+export type Option<T extends string = string> = { value: T; label: string };
+
 export type Employee = {
     id: number;
     name: string;
     job_title: string | null;
+    region: Region;
+    region_label: string;
+    payment_method: PaymentMethod;
+    payment_method_label: string;
+    account_number: string | null;
     base_salary: number;
     start_month: string;
     attendance_mode: AttendanceMode;
@@ -42,6 +57,9 @@ export type PayrollRow = {
     remaining: number;
     status: PayrollStatus;
     note: string | null;
+    treasury_id: number | null;
+    payment_method: PaymentMethod | null;
+    account_number: string | null;
 };
 
 export type PayrollTotals = {
@@ -78,6 +96,10 @@ export type Invoice = {
     type: InvoiceType;
     is_auto: boolean;
     month: string;
+    treasury_id: number | null;
+    custody_id: number | null;
+    source_label: string;
+    settled: boolean;
     created_at: string | null;
     receipt: ReceiptRef | null;
 };
@@ -91,7 +113,78 @@ export type PurchaseSummary = {
     with_receipts: number;
 };
 
-export type PurchaseGroup = { id: number; name: string; code: string };
+export type PurchaseGroup = {
+    id: number;
+    name: string;
+    code: string;
+    region: Region;
+    region_label: string;
+    kind: GroupKind;
+};
+
+export type TreasuryRef = {
+    id: number;
+    name: string;
+    region: Region;
+    region_label: string;
+};
+
+export type Treasury = TreasuryRef & { balance: number };
+
+export type CustodyOption = { id: number; label: string; region: Region };
+
+export type CustodyState = {
+    issued: number;
+    replenished: number;
+    returned: number;
+    spent: number;
+    pending: number;
+    pending_count: number;
+    cash: number;
+};
+
+export type Custody = CustodyState & {
+    id: number;
+    holder_name: string;
+    title: string | null;
+    label: string;
+    region: Region;
+    region_label: string;
+    status: 'open' | 'closed';
+    closed_on: string | null;
+    opened_on: string | null;
+    treasury: TreasuryRef;
+};
+
+export type LedgerKind =
+    | 'deposit'
+    | 'withdrawal'
+    | 'transfer_in'
+    | 'transfer_out'
+    | 'salary'
+    | 'invoice'
+    | 'expense'
+    | 'custody';
+
+export type LedgerEntry = {
+    key: string;
+    date: string;
+    kind: LedgerKind;
+    description: string;
+    detail: string | null;
+    amount: number;
+    balance: number;
+    custody_id: number | null;
+    group_id: number | null;
+};
+
+export type Ledger = {
+    opening: number;
+    inflow: number;
+    outflow: number;
+    closing: number;
+    entries: LedgerEntry[];
+};
 
 export type MonthTile = {
     month: string;

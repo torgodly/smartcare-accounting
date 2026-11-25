@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Money } from '@/components/Money';
@@ -8,21 +8,41 @@ import { useMonth } from '@/hooks/use-month';
 import AppShell, { PageHeader } from '@/layouts/AppShell';
 import { monthLabel } from '@/lib/months';
 import { show } from '@/routes/purchase-groups';
+import type { GroupKind } from '@/types';
 import type { PurchaseGroup, PurchaseSummary } from '@/types';
 import { GroupDialog } from './GroupDialog';
 
 type GroupCard = PurchaseGroup & PurchaseSummary;
 
-export default function PurchasesIndex({ groups }: { groups: GroupCard[] }) {
+const COPY: Record<GroupKind, { title: string; description: string }> = {
+    purchase: {
+        title: 'المشتريات',
+        description: 'مجموعات المشتريات وإجمالي كل مجموعة في',
+    },
+    expense: {
+        title: 'المصروفات',
+        description: 'مجموعات المصروفات وإجمالي كل مجموعة في',
+    },
+};
+
+export default function PurchasesIndex({
+    groups,
+    kind,
+}: {
+    groups: GroupCard[];
+    kind: GroupKind;
+}) {
     const { month } = useMonth();
+    const { region } = usePage().props;
+    const copy = COPY[kind];
     const [creating, setCreating] = useState(false);
 
     return (
         <AppShell>
-            <Head title="المشتريات" />
+            <Head title={copy.title} />
             <PageHeader
-                title="المشتريات"
-                description={`مجموعات المشتريات وإجمالي كل مجموعة في ${monthLabel(month)}`}
+                title={copy.title}
+                description={`${copy.description} ${monthLabel(month)}`}
                 actions={
                     <Button onClick={() => setCreating(true)}>
                         <Plus />
@@ -42,7 +62,14 @@ export default function PurchasesIndex({ groups }: { groups: GroupCard[] }) {
                             <h2 className="min-w-0 text-[17px] font-semibold">
                                 {group.name}
                             </h2>
-                            <span className="serial pt-1">{group.code}</span>
+                            <span className="flex shrink-0 items-center gap-1.5 pt-1">
+                                {region === 'all' && (
+                                    <StatusPill kind="neutral">
+                                        {group.region_label}
+                                    </StatusPill>
+                                )}
+                                <span className="serial">{group.code}</span>
+                            </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-[13px] text-muted">
                             <span>{group.count} فاتورة</span>
@@ -75,6 +102,7 @@ export default function PurchasesIndex({ groups }: { groups: GroupCard[] }) {
                 open={creating}
                 onOpenChange={setCreating}
                 group={null}
+                kind={kind}
             />
         </AppShell>
     );

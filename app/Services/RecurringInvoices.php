@@ -22,7 +22,7 @@ class RecurringInvoices
         }
 
         $previous = Invoice::query()
-            ->with('group')
+            ->with(['group', 'custody'])
             ->where('month', Months::add($month, -1))
             ->where('type', Invoice::TYPE_RECURRING)
             ->orderBy('id')
@@ -52,6 +52,7 @@ class RecurringInvoices
                 $this->serials->createInvoice($invoice->group, $month, [
                     'title' => $invoice->title,
                     'price' => $invoice->price,
+                    ...self::source($invoice),
                     'reason' => $invoice->reason,
                     'type' => Invoice::TYPE_RECURRING,
                     'recurring_root_id' => $chain,
@@ -66,5 +67,19 @@ class RecurringInvoices
         }
 
         return $created;
+    }
+
+    /**
+     * The copy is paid from the same place, unless the custody was closed: then from its treasury.
+     *
+     * @return array{treasury_id: int|null, custody_id: int|null}
+     */
+    private static function source(Invoice $invoice): array
+    {
+        if ($invoice->custody !== null && $invoice->custody->isOpen()) {
+            return ['treasury_id' => null, 'custody_id' => $invoice->custody_id];
+        }
+
+        return ['treasury_id' => $invoice->treasury_id ?? $invoice->custody?->treasury_id, 'custody_id' => null];
     }
 }

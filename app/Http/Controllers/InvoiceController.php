@@ -10,6 +10,7 @@ use App\Models\Receipt;
 use App\Services\ReceiptStorage;
 use App\Services\SerialNumber;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class InvoiceController extends Controller
@@ -24,6 +25,7 @@ class InvoiceController extends Controller
         $serials->createInvoice($group, $data['month'], [
             'title' => $data['title'],
             'price' => $data['price'],
+            ...self::source($data),
             'reason' => $data['reason'] ?? null,
             'type' => $data['type'],
             'receipt_id' => $data['receipt_id'] ?? null,
@@ -42,10 +44,16 @@ class InvoiceController extends Controller
     {
         $data = $request->validated();
         $previousReceiptId = $invoice->receipt_id;
+        $source = self::source($data);
+
+        if ($invoice->isSettled() && (bccomp((string) $data['price'], (string) $invoice->price, 2) !== 0 || $source['custody_id'] !== $invoice->custody_id)) {
+            throw ValidationException::withMessages(['price' => 'تم تعويض هذه الفاتورة في العهدة، لا يمكن تغيير السعر أو مصدر الدفع']);
+        }
 
         $invoice->update([
             'title' => $data['title'],
             'price' => $data['price'],
+            ...$source,
             'reason' => $data['reason'] ?? null,
             'type' => $data['type'],
             'receipt_id' => $data['receipt_id'] ?? null,
@@ -76,6 +84,22 @@ class InvoiceController extends Controller
     }
 
     /**
+     * The invoice's funding: a treasury directly, or a custody (whose treasury pays on renewal).
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{treasury_id: int|null, custody_id: int|null}
+     */
+    private static function source(array $data): array
+    {
+        $custodyId = isset($data['custody_id']) ? (int) $data['custody_id'] : null;
+
+        return [
+            'treasury_id' => $custodyId === null && isset($data['treasury_id']) ? (int) $data['treasury_id'] : null,
+            'custody_id' => $custodyId,
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function present(Invoice $invoice): array
@@ -89,6 +113,12 @@ class InvoiceController extends Controller
             'type' => $invoice->type,
             'is_auto' => $invoice->is_auto,
             'month' => $invoice->month,
+            'treasury_id' => $invoice->treasury_id,
+            'custody_id' => $invoice->custody_id,
+            'source_label' => $invoice->custody_id !== null
+                ? 'عهدة: '.($invoice->custody?->label() ?? '')
+                : ($invoice->treasury?->name ?? ''),
+            'settled' => $invoice->isSettled(),
             'created_at' => $invoice->created_at?->toDateString(),
             'receipt' => $invoice->receipt !== null
                 ? ['id' => $invoice->receipt->id, 'url' => $invoice->receipt->url()]

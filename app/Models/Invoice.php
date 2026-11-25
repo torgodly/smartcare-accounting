@@ -17,6 +17,9 @@ use Illuminate\Support\Carbon;
  * @property string $serial
  * @property string $title
  * @property string $price
+ * @property int|null $treasury_id
+ * @property int|null $custody_id
+ * @property int|null $custody_movement_id
  * @property string|null $reason
  * @property string $type
  * @property int|null $recurring_root_id
@@ -26,7 +29,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['purchase_group_id', 'month', 'sequence', 'serial', 'title', 'price', 'reason', 'type', 'recurring_root_id', 'is_auto', 'receipt_id', 'created_by'])]
+#[Fillable(['purchase_group_id', 'month', 'sequence', 'serial', 'title', 'price', 'treasury_id', 'custody_id', 'custody_movement_id', 'reason', 'type', 'recurring_root_id', 'is_auto', 'receipt_id', 'created_by'])]
 class Invoice extends Model
 {
     /** @use HasFactory<InvoiceFactory> */
@@ -56,6 +59,40 @@ class Invoice extends Model
     public function group(): BelongsTo
     {
         return $this->belongsTo(PurchaseGroup::class, 'purchase_group_id');
+    }
+
+    /**
+     * @return BelongsTo<Treasury, $this>
+     */
+    public function treasury(): BelongsTo
+    {
+        return $this->belongsTo(Treasury::class);
+    }
+
+    /**
+     * @return BelongsTo<Custody, $this>
+     */
+    public function custody(): BelongsTo
+    {
+        return $this->belongsTo(Custody::class);
+    }
+
+    /**
+     * The custody movement that reimbursed this invoice, if any.
+     *
+     * @return BelongsTo<CustodyMovement, $this>
+     */
+    public function settlement(): BelongsTo
+    {
+        return $this->belongsTo(CustodyMovement::class, 'custody_movement_id');
+    }
+
+    /**
+     * Whether a custody replenishment already covered this invoice.
+     */
+    public function isSettled(): bool
+    {
+        return $this->custody_movement_id !== null;
     }
 
     /**

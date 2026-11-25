@@ -29,6 +29,9 @@ use Illuminate\Support\Collection;
  *     remaining: float,
  *     status: string,
  *     note: string|null,
+ *     treasury_id: int|null,
+ *     payment_method: string|null,
+ *     account_number: string|null,
  * }
  */
 class PayrollCalculator
@@ -281,6 +284,9 @@ class PayrollCalculator
             'remaining' => Money::fromCents($remaining),
             'status' => self::status($remaining, $paid),
             'note' => $record?->note,
+            'treasury_id' => $record?->treasury_id,
+            'payment_method' => $record?->payment_method,
+            'account_number' => $record?->account_number,
         ];
     }
 
@@ -322,6 +328,9 @@ class PayrollCalculator
             'remaining' => 0.0,
             'status' => self::STATUS_NOT_STARTED,
             'note' => null,
+            'treasury_id' => null,
+            'payment_method' => null,
+            'account_number' => null,
         ];
     }
 }

@@ -11,12 +11,20 @@ import { AppDialog } from '@/components/AppDialog';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Field } from '@/components/Field';
 import { MoneyInput } from '@/components/MoneyInput';
+import { NativeSelect } from '@/components/NativeSelect';
 import { QrUploadDialog } from '@/components/QrUploadDialog';
 import { ReceiptPicker } from '@/components/ReceiptPicker';
 import { Button } from '@/components/ui/button';
 import { useMonth } from '@/hooks/use-month';
 import { cn } from '@/lib/utils';
-import type { Invoice, InvoiceType, PurchaseGroup, ReceiptRef } from '@/types';
+import type {
+    CustodyOption,
+    Invoice,
+    InvoiceType,
+    PurchaseGroup,
+    ReceiptRef,
+    TreasuryRef,
+} from '@/types';
 
 type InvoiceForm = {
     title: string;
@@ -24,17 +32,42 @@ type InvoiceForm = {
     reason: string;
     type: InvoiceType;
     receipt_id: string | null;
+    source: string;
+    group_id: string;
 };
+
+/** "t:3" pays from treasury 3, "c:5" is charged to custody 5. */
+function sourceOf(invoice: Invoice | null): string {
+    if (!invoice) {
+        return '';
+    }
+
+    return invoice.custody_id
+        ? `c:${invoice.custody_id}`
+        : invoice.treasury_id
+          ? `t:${invoice.treasury_id}`
+          : '';
+}
 
 export function InvoiceDialog({
     open,
     invoice,
     group,
+    groups = [],
+    treasuries,
+    custodies,
+    fixedCustodyId,
     onOpenChange,
 }: {
     open: boolean;
     invoice: Invoice | null;
-    group: PurchaseGroup;
+    /** The invoice's group; null lets the user pick one from `groups`. */
+    group: PurchaseGroup | null;
+    groups?: PurchaseGroup[];
+    treasuries: TreasuryRef[];
+    custodies: CustodyOption[];
+    /** Opened from a custody: the invoice is always charged to it. */
+    fixedCustodyId?: number;
     onOpenChange: (open: boolean) => void;
 }) {
     const { month } = useMonth();
@@ -44,7 +77,21 @@ export function InvoiceDialog({
         reason: '',
         type: 'once',
         receipt_id: null,
+        source: '',
+        group_id: '',
     });
+    const settled = invoice?.settled ?? false;
+    const defaultSource = fixedCustodyId
+        ? `c:${fixedCustodyId}`
+        : treasuries[0]
+          ? `t:${treasuries[0].id}`
+          : '';
+    // A closed custody is no longer offered, but its invoices still show it.
+    const missingCustody =
+        invoice?.custody_id &&
+        !custodies.some((custody) => custody.id === invoice.custody_id)
+            ? { id: invoice.custody_id, label: invoice.source_label }
+            : null;
     const [receipt, setReceipt] = useState<ReceiptRef | null>(null);
     const [qrOpen, setQrOpen] = useState(false);
     const [confirming, setConfirming] = useState(false);
@@ -62,6 +109,8 @@ export function InvoiceDialog({
             reason: invoice?.reason ?? '',
             type: invoice?.type ?? 'once',
             receipt_id: invoice?.receipt?.id ?? null,
+            source: sourceOf(invoice) || defaultSource,
+            group_id: group ? String(group.id) : String(groups[0]?.id ?? ''),
         });
         setReceipt(invoice?.receipt ?? null);
         setQrOpen(false);
@@ -83,11 +132,26 @@ export function InvoiceDialog({
                 toast(`لم يتم الحفظ: ${Object.values(errors)[0] ?? ''}`),
         };
 
+        const [kind, id] = form.data.source.split(':');
+        form.transform(({ source: _source, group_id: _group, ...data }) => ({
+            ...data,
+            month,
+            treasury_id: kind === 't' ? Number(id) : null,
+            custody_id: kind === 'c' ? Number(id) : null,
+        }));
+
         if (invoice) {
             form.put(update.url(invoice.id), options);
         } else {
-            form.transform((data) => ({ ...data, month }));
-            form.post(store.url(group.id), options);
+            const groupId = group?.id ?? Number(form.data.group_id);
+
+            if (!groupId) {
+                toast('لم يتم الحفظ: اختر المجموعة');
+
+                return;
+            }
+
+            form.post(store.url(groupId), options);
         }
     }
 
@@ -120,8 +184,10 @@ export function InvoiceDialog({
                                 {invoice.serial}
                             </span>
                         </>
-                    ) : (
+                    ) : group ? (
                         `فاتورة جديدة · ${group.name}`
+                    ) : (
+                        'فاتورة جديدة'
                     )
                 }
                 footer={
@@ -168,6 +234,102 @@ export function InvoiceDialog({
                             onQr={() => setQrOpen(true)}
                         />
                     </Field>
+                    {!group && (
+                        <Field label="المجموعة" htmlFor="invoice-group">
+                            <NativeSelect
+                                id="invoice-group"
+                                value={form.data.group_id}
+                                onChange={(event) =>
+                                    form.setData('group_id', event.target.value)
+                                }
+                            >
+                                {(['purchase', 'expense'] as const).map(
+                                    (kind) => {
+                                        const list = groups.filter(
+                                            (item) => item.kind === kind,
+                                        );
+
+                                        return list.length > 0 ? (
+                                            <optgroup
+                                                key={kind}
+                                                label={
+                                                    kind === 'purchase'
+                                                        ? 'المشتريات'
+                                                        : 'المصروفات'
+                                                }
+                                            >
+                                                {list.map((item) => (
+                                                    <option
+                                                        key={item.id}
+                                                        value={item.id}
+                                                    >
+                                                        {item.name}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        ) : null;
+                                    },
+                                )}
+                            </NativeSelect>
+                        </Field>
+                    )}
+                    {!fixedCustodyId && (
+                        <Field
+                            label="مصدر الدفع"
+                            htmlFor="invoice-source"
+                            error={
+                                (form.errors as Record<string, string>)
+                                    .treasury_id ??
+                                (form.errors as Record<string, string>)
+                                    .custody_id
+                            }
+                            hint={
+                                settled
+                                    ? 'تم تعويض هذه الفاتورة في العهدة'
+                                    : 'الفاتورة على العهدة لا تُخصم من الخزينة إلا عند تجديد العهدة'
+                            }
+                        >
+                            <NativeSelect
+                                id="invoice-source"
+                                value={form.data.source}
+                                disabled={settled}
+                                onChange={(event) =>
+                                    form.setData('source', event.target.value)
+                                }
+                            >
+                                <option value="">اختر خزينة أو عهدة</option>
+                                <optgroup label="الخزائن">
+                                    {treasuries.map((treasury) => (
+                                        <option
+                                            key={treasury.id}
+                                            value={`t:${treasury.id}`}
+                                        >
+                                            {treasury.name}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                                {(custodies.length > 0 || missingCustody) && (
+                                    <optgroup label="العُهد">
+                                        {custodies.map((custody) => (
+                                            <option
+                                                key={custody.id}
+                                                value={`c:${custody.id}`}
+                                            >
+                                                عهدة: {custody.label}
+                                            </option>
+                                        ))}
+                                        {missingCustody && (
+                                            <option
+                                                value={`c:${missingCustody.id}`}
+                                            >
+                                                {missingCustody.label}
+                                            </option>
+                                        )}
+                                    </optgroup>
+                                )}
+                            </NativeSelect>
+                        </Field>
+                    )}
                     <Field
                         label="العنوان"
                         htmlFor="invoice-title"
@@ -192,6 +354,7 @@ export function InvoiceDialog({
                     >
                         <MoneyInput
                             id="invoice-price"
+                            disabled={settled}
                             placeholder="0"
                             value={form.data.price}
                             aria-invalid={!!form.errors.price}

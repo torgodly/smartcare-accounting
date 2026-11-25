@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import type { FormEvent, ReactNode } from 'react';
 import { toast } from 'sonner';
 import { update } from '@/actions/App/Http/Controllers/PayrollController';
@@ -6,11 +6,12 @@ import { AppDialog } from '@/components/AppDialog';
 import { Field } from '@/components/Field';
 import { Money } from '@/components/Money';
 import { MoneyInput } from '@/components/MoneyInput';
+import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { useMonth } from '@/hooks/use-month';
 import { formatNumber, moneyInputValue, parseMoney } from '@/lib/money';
 import { cn } from '@/lib/utils';
-import type { Employee, PayrollRow } from '@/types';
+import type { Employee, PaymentMethod, PayrollRow, TreasuryRef } from '@/types';
 
 /**
  * Record bonus, extra deduction and payment for one month, with a live breakdown.
@@ -19,20 +20,35 @@ export function PaymentDialog({
     open,
     employee,
     payroll,
+    treasuries,
     title,
     onOpenChange,
 }: {
     open: boolean;
     employee: Employee;
     payroll: PayrollRow;
+    treasuries: TreasuryRef[];
     title: string;
     onOpenChange: (open: boolean) => void;
 }) {
     const { month } = useMonth();
+    const { paymentMethods } = usePage().props;
+    const regionTreasuries = treasuries.filter(
+        (treasury) => treasury.region === employee.region,
+    );
+    const otherTreasuries = treasuries.filter(
+        (treasury) => treasury.region !== employee.region,
+    );
     const form = useForm({
         bonus: moneyInputValue(payroll.bonus),
         manual_deduction: moneyInputValue(payroll.manual_deduction),
         paid_amount: moneyInputValue(payroll.paid),
+        treasury_id: String(
+            payroll.treasury_id ?? regionTreasuries[0]?.id ?? '',
+        ),
+        payment_method: (payroll.payment_method ??
+            employee.payment_method) as PaymentMethod,
+        account_number: payroll.account_number ?? employee.account_number ?? '',
         note: payroll.note ?? '',
     });
 
@@ -137,6 +153,87 @@ export function PaymentDialog({
                                 form.setData('paid_amount', event.target.value)
                             }
                             autoFocus
+                        />
+                    </Field>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <Field
+                        label="صُرف من خزينة"
+                        htmlFor="pay-treasury"
+                        error={form.errors.treasury_id}
+                    >
+                        <NativeSelect
+                            id="pay-treasury"
+                            value={form.data.treasury_id}
+                            aria-invalid={!!form.errors.treasury_id}
+                            onChange={(event) =>
+                                form.setData('treasury_id', event.target.value)
+                            }
+                        >
+                            <option value="">اختر الخزينة</option>
+                            {regionTreasuries.map((treasury) => (
+                                <option key={treasury.id} value={treasury.id}>
+                                    {treasury.name}
+                                </option>
+                            ))}
+                            {otherTreasuries.length > 0 && (
+                                <optgroup label="مناطق أخرى">
+                                    {otherTreasuries.map((treasury) => (
+                                        <option
+                                            key={treasury.id}
+                                            value={treasury.id}
+                                        >
+                                            {treasury.name} (
+                                            {treasury.region_label})
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            )}
+                        </NativeSelect>
+                    </Field>
+                    <Field
+                        label="نوع الخلاص"
+                        htmlFor="pay-method"
+                        error={form.errors.payment_method}
+                    >
+                        <NativeSelect
+                            id="pay-method"
+                            value={form.data.payment_method}
+                            onChange={(event) =>
+                                form.setData(
+                                    'payment_method',
+                                    event.target.value as PaymentMethod,
+                                )
+                            }
+                        >
+                            {paymentMethods.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </NativeSelect>
+                    </Field>
+                    <Field
+                        label={
+                            form.data.payment_method === 'cheque'
+                                ? 'رقم الصك'
+                                : 'رقم الحساب'
+                        }
+                        htmlFor="pay-account"
+                        error={form.errors.account_number}
+                    >
+                        <input
+                            id="pay-account"
+                            dir="ltr"
+                            className="field-input text-right font-mono"
+                            maxLength={64}
+                            value={form.data.account_number}
+                            onChange={(event) =>
+                                form.setData(
+                                    'account_number',
+                                    event.target.value,
+                                )
+                            }
                         />
                     </Field>
                 </div>

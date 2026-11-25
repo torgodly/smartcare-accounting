@@ -1,18 +1,25 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { destroy as logout } from '@/actions/App/Http/Controllers/LoginController';
 import { MonthPicker } from '@/components/MonthPicker';
+import { SegmentedControl } from '@/components/SegmentedControl';
 import { Toaster } from '@/components/ui/sonner';
 import { useMonth } from '@/hooks/use-month';
 import { addMonths } from '@/lib/months';
 import { cn } from '@/lib/utils';
 import { home } from '@/routes';
 import { index as attendanceIndex } from '@/routes/attendance';
+import { index as custodiesIndex } from '@/routes/custodies';
+import { index as expensesIndex } from '@/routes/expenses';
 import { index as purchasesIndex } from '@/routes/purchase-groups';
+import { update as updateRegion } from '@/routes/region';
 import { index as salariesIndex } from '@/routes/salaries';
+import { index as treasuriesIndex } from '@/routes/treasuries';
+import { index as usersIndex } from '@/routes/users';
+import type { RegionFilter } from '@/types';
 
 const NAV = [
     { label: 'الرئيسية', route: home, match: (path: string) => path === '/' },
@@ -31,7 +38,69 @@ const NAV = [
         route: purchasesIndex,
         match: (path: string) => path.startsWith('/purchases'),
     },
+    {
+        label: 'المصروفات',
+        route: expensesIndex,
+        match: (path: string) => path.startsWith('/expenses'),
+    },
+    {
+        label: 'العُهد',
+        route: custodiesIndex,
+        match: (path: string) => path.startsWith('/custodies'),
+    },
+    {
+        label: 'الخزائن',
+        route: treasuriesIndex,
+        match: (path: string) => path.startsWith('/treasuries'),
+    },
 ];
+
+/**
+ * East / West / all switcher; the choice is kept in the session and every page reloads for it.
+ */
+function RegionSwitcher() {
+    const { region, regions, auth } = usePage().props;
+
+    // Regional accounts are locked to their region: show it, no switching.
+    if (auth.user && !auth.user.is_admin) {
+        const label =
+            regions.find((option) => option.value === region)?.label ?? '';
+
+        return (
+            <span className="inline-flex h-7 items-center rounded-full bg-accent-soft px-3 text-[13px] font-semibold text-accent">
+                منطقة {label}
+            </span>
+        );
+    }
+
+    function change(next: RegionFilter) {
+        if (next === region) {
+            return;
+        }
+
+        router.put(
+            updateRegion.url(),
+            { region: next },
+            { preserveScroll: true },
+        );
+    }
+
+    return (
+        <SegmentedControl<RegionFilter>
+            ariaLabel="المنطقة"
+            size="sm"
+            value={region}
+            onChange={change}
+            options={[
+                { value: 'all', label: 'الكل' },
+                ...regions.map((option) => ({
+                    value: option.value as RegionFilter,
+                    label: option.label,
+                })),
+            ]}
+        />
+    );
+}
 
 /**
  * Shows flash messages from the server as toasts.
@@ -60,8 +129,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
     const { month, currentMonth, setMonth } = useMonth();
     const path = new URL(page.url, 'http://local').pathname;
     const user = page.props.auth.user;
+    const navRef = useRef<HTMLElement>(null);
 
     useFlashToasts();
+
+    // On phones the nav scrolls sideways; bring the current page's link into view.
+    useEffect(() => {
+        navRef.current
+            ?.querySelector('[aria-current="page"]')
+            ?.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }, [path]);
 
     return (
         <div className="min-h-screen bg-bg">
@@ -87,10 +164,23 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     </Link>
 
                     <nav
+                        ref={navRef}
                         aria-label="التنقل الرئيسي"
                         className="order-4 flex w-full items-center gap-1 overflow-x-auto sm:order-2 sm:w-auto"
                     >
-                        {NAV.map((item) => {
+                        {[
+                            ...NAV,
+                            ...(user?.is_admin
+                                ? [
+                                      {
+                                          label: 'المستخدمون',
+                                          route: usersIndex,
+                                          match: (current: string) =>
+                                              current.startsWith('/users'),
+                                      },
+                                  ]
+                                : []),
+                        ].map((item) => {
                             const active = item.match(path);
 
                             return (
@@ -111,7 +201,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
                         })}
                     </nav>
 
-                    <div className="order-3 flex items-center gap-0.5 rounded-full bg-sunk p-1 sm:ms-auto">
+                    <div className="order-3 sm:ms-auto">
+                        <RegionSwitcher />
+                    </div>
+
+                    <div className="order-3 flex items-center gap-0.5 rounded-full bg-sunk p-1">
                         <button
                             type="button"
                             onClick={() => setMonth(addMonths(month, -1))}

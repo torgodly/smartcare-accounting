@@ -29,9 +29,9 @@ class PdfReports
     /**
      * The monthly salary sheet.
      */
-    public function salaries(string $month): string
+    public function salaries(string $month, string $region = Regions::ALL): string
     {
-        $employees = Employee::query()->ordered()->get();
+        $employees = Employee::query()->inRegion($region)->ordered()->get();
         $payroll = $this->calculator->forEmployees($employees, $month);
 
         $rows = $employees
@@ -41,7 +41,7 @@ class PdfReports
 
         $html = view('pdf.salaries', [
             'month' => $month,
-            'monthLabel' => Months::label($month),
+            'monthLabel' => Months::label($month).($region !== Regions::ALL ? ' · '.Regions::LABELS[$region] : ''),
             'rows' => $rows,
             'totals' => PayrollCalculator::totals($payroll),
             ...$this->common(),

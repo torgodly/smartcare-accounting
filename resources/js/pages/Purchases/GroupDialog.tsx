@@ -1,4 +1,4 @@
-import { router, useForm } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { toast } from 'sonner';
@@ -10,28 +10,45 @@ import {
 import { AppDialog } from '@/components/AppDialog';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Field } from '@/components/Field';
+import { NativeSelect } from '@/components/NativeSelect';
+import { SegmentedControl } from '@/components/SegmentedControl';
 import { Button } from '@/components/ui/button';
 import { useMonth } from '@/hooks/use-month';
-import type { PurchaseGroup } from '@/types';
+import type { GroupKind, PurchaseGroup, Region } from '@/types';
 
 export function GroupDialog({
     open,
     onOpenChange,
     group,
+    kind = 'purchase',
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     group: PurchaseGroup | null;
+    kind?: GroupKind;
 }) {
     const { month } = useMonth();
-    const form = useForm({ name: '', code: '' });
+    const { region, regions, auth } = usePage().props;
+    const isAdmin = auth.user?.is_admin ?? false;
+    const defaultRegion: Region = region === 'all' ? 'east' : region;
+    const form = useForm<{
+        name: string;
+        code: string;
+        region: Region;
+        kind: GroupKind;
+    }>({ name: '', code: '', region: defaultRegion, kind });
     const [confirming, setConfirming] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         if (open) {
             form.clearErrors();
-            form.setData({ name: group?.name ?? '', code: group?.code ?? '' });
+            form.setData({
+                name: group?.name ?? '',
+                code: group?.code ?? '',
+                region: group?.region ?? defaultRegion,
+                kind: group?.kind ?? kind,
+            });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, group?.id]);
@@ -119,6 +136,45 @@ export function GroupDialog({
                             autoFocus
                         />
                     </Field>
+                    <Field label="النوع">
+                        <SegmentedControl<GroupKind>
+                            ariaLabel="نوع المجموعة"
+                            fullWidth
+                            value={form.data.kind}
+                            onChange={(value) => form.setData('kind', value)}
+                            options={[
+                                { value: 'purchase', label: 'مشتريات' },
+                                { value: 'expense', label: 'مصروفات' },
+                            ]}
+                        />
+                    </Field>
+                    {isAdmin && (
+                        <Field
+                            label="المنطقة"
+                            htmlFor="group-region"
+                            error={form.errors.region}
+                        >
+                            <NativeSelect
+                                id="group-region"
+                                value={form.data.region}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'region',
+                                        event.target.value as Region,
+                                    )
+                                }
+                            >
+                                {regions.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </Field>
+                    )}
                     <Field
                         label="رمز الترقيم"
                         htmlFor="group-code"

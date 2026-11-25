@@ -9,8 +9,15 @@ import { Button } from '@/components/ui/button';
 import { useMonth } from '@/hooks/use-month';
 import AppShell, { PageHeader } from '@/layouts/AppShell';
 import { monthLabel } from '@/lib/months';
+import { index as expensesIndex } from '@/routes/expenses';
 import { index as purchasesIndex } from '@/routes/purchase-groups';
-import type { Invoice, PurchaseGroup, PurchaseSummary } from '@/types';
+import type {
+    CustodyOption,
+    Invoice,
+    PurchaseGroup,
+    PurchaseSummary,
+    TreasuryRef,
+} from '@/types';
 import { GroupDialog } from './GroupDialog';
 import { InvoiceCards } from './InvoiceCards';
 import { InvoiceDialog } from './InvoiceDialog';
@@ -33,11 +40,17 @@ export default function PurchasesShow({
     group,
     invoices,
     summary,
+    treasuries,
+    custodies,
 }: {
     group: PurchaseGroup;
     invoices: Invoice[];
     summary: PurchaseSummary;
+    treasuries: TreasuryRef[];
+    custodies: CustodyOption[];
 }) {
+    const isExpense = group.kind === 'expense';
+    const backIndex = isExpense ? expensesIndex : purchasesIndex;
     const { month } = useMonth();
     const [layout, setLayout] = useState<Layout>(storedLayout);
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -64,10 +77,11 @@ export default function PurchasesShow({
             <PageHeader
                 breadcrumb={
                     <Link
-                        href={purchasesIndex.url({ query: { month } })}
+                        href={backIndex.url({ query: { month } })}
                         className="mb-1 inline-block text-[13px] text-muted hover:text-accent"
                     >
-                        → المشتريات
+                        → {isExpense ? 'المصروفات' : 'المشتريات'} ·{' '}
+                        {group.region_label}
                     </Link>
                 }
                 title={group.name}
@@ -161,6 +175,8 @@ export default function PurchasesShow({
                 open={dialog.open}
                 invoice={dialog.invoice}
                 group={group}
+                treasuries={treasuries}
+                custodies={custodies}
                 onOpenChange={(open) =>
                     setDialog((state) => ({ ...state, open }))
                 }

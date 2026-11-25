@@ -17,11 +17,14 @@ use Illuminate\Support\Carbon;
  * @property string $bonus
  * @property string $manual_deduction
  * @property string $paid_amount
+ * @property int|null $treasury_id
+ * @property string|null $payment_method
+ * @property string|null $account_number
  * @property string|null $note
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['employee_id', 'month', 'base_salary', 'bonus', 'manual_deduction', 'paid_amount', 'note'])]
+#[Fillable(['employee_id', 'month', 'base_salary', 'bonus', 'manual_deduction', 'paid_amount', 'treasury_id', 'payment_method', 'account_number', 'note'])]
 class PayrollRecord extends Model
 {
     /** @use HasFactory<PayrollRecordFactory> */
@@ -48,5 +51,13 @@ class PayrollRecord extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    /**
+     * @return BelongsTo<Treasury, $this>
+     */
+    public function treasury(): BelongsTo
+    {
+        return $this->belongsTo(Treasury::class);
     }
 }

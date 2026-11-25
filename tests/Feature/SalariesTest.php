@@ -2,6 +2,7 @@
 
 use App\Models\Employee;
 use App\Models\PayrollRecord;
+use App\Models\Treasury;
 use App\Models\User;
 use App\Services\PayrollCalculator;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -68,6 +69,7 @@ test('saving a month snapshots the base salary', function () {
         'bonus' => 50,
         'manual_deduction' => '',
         'paid_amount' => 500,
+        'treasury_id' => Treasury::query()->value('id'),
         'note' => 'دفعة أولى',
     ])->assertRedirect();
 
@@ -82,7 +84,7 @@ test('saving a month snapshots the base salary', function () {
 test('a month before the start month cannot be saved', function () {
     $employee = Employee::factory()->create(['start_month' => '2026-11']);
 
-    $this->put(route('payroll.update', [$employee, '2026-10']), ['paid_amount' => 10])->assertStatus(422);
+    $this->put(route('payroll.update', [$employee, '2026-10']), ['paid_amount' => 10, 'treasury_id' => Treasury::query()->value('id')])->assertStatus(422);
 });
 
 test('pay full makes the month paid and the next carry zero', function () {

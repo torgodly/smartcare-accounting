@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Models\PurchaseGroup;
+use App\Services\Regions;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePurchaseGroupRequest extends FormRequest
 {
@@ -13,7 +16,13 @@ class StorePurchaseGroupRequest extends FormRequest
     {
         $code = substr((string) preg_replace('/[^A-Z0-9]/', '', strtoupper((string) $this->input('code'))), 0, 4);
 
-        $this->merge(['code' => $code === '' ? 'G' : $code]);
+        $group = $this->route('group');
+
+        $this->merge([
+            'code' => $code === '' ? 'G' : $code,
+            'region' => Regions::lockedFor($this) ?? ($this->input('region') ?: ($group?->region ?? Regions::defaultFor($this))),
+            'kind' => $this->input('kind') ?: ($group?->kind ?? PurchaseGroup::KIND_PURCHASE),
+        ]);
     }
 
     /**
@@ -24,6 +33,8 @@ class StorePurchaseGroupRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:120'],
             'code' => ['required', 'string', 'regex:/^[A-Z0-9]{1,4}$/'],
+            'region' => ['required', Rule::in(Regions::keys())],
+            'kind' => ['required', Rule::in(array_keys(PurchaseGroup::KIND_LABELS))],
         ];
     }
 

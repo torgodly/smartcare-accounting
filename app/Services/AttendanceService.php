@@ -61,12 +61,13 @@ class AttendanceService
     /**
      * Mark everyone without a status on the date as present (rule 5.2.4).
      */
-    public function markAll(string $date): int
+    public function markAll(string $date, string $region = Regions::ALL): int
     {
         $month = Months::ofDate($date);
         $workHours = Setting::workHours();
 
         $employees = Employee::query()
+            ->inRegion($region)
             ->where('attendance_mode', '!=', Employee::MODE_NONE)
             ->where('start_month', '<=', $month)
             ->whereDoesntHave('attendanceRecords', fn ($query) => $query->where('date', $date))

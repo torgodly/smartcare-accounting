@@ -41,6 +41,9 @@ export function InvoiceCards({
                             </span>
                             <StatusPill kind={invoice.type} />
                         </div>
+                        <span className="text-[12.5px] text-muted">
+                            {invoice.source_label}
+                        </span>
                         <div className="flex items-end justify-between gap-2">
                             <span className="serial">{invoice.serial}</span>
                             <Money value={invoice.price} size="card" />

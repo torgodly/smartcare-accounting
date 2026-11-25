@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdatePayrollRequest;
 use App\Models\Employee;
 use App\Models\PayrollRecord;
+use App\Models\Treasury;
 use App\Services\Money;
 use App\Services\Months;
+use App\Services\PaymentMethods;
 use App\Services\PayrollCalculator;
+use App\Services\Regions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -21,7 +24,7 @@ class PayrollController extends Controller
     public function index(Request $request, PayrollCalculator $calculator): Response
     {
         $month = $this->selectedMonth($request);
-        $employees = Employee::query()->ordered()->get();
+        $employees = Employee::query()->inRegion(Regions::current($request))->ordered()->get();
         $payroll = $calculator->forEmployees($employees, $month);
 
         return Inertia::render('Salaries/Index', [
@@ -30,6 +33,7 @@ class PayrollController extends Controller
                 'payroll' => $payroll[$employee->id],
             ])->values(),
             'totals' => PayrollCalculator::totals($payroll),
+            'treasuries' => TreasuryController::options(Regions::current($request)),
         ]);
     }
 
@@ -41,7 +45,15 @@ class PayrollController extends Controller
         $this->ensureMonth($employee, $month);
 
         $record = $this->recordFor($employee, $month);
-        $record->fill($request->validated())->save();
+        $record->fill($request->validated());
+
+        if ((float) $record->paid_amount > 0) {
+            $record->payment_method ??= $employee->payment_method;
+        } else {
+            $record->treasury_id = null;
+        }
+
+        $record->save();
 
         Inertia::flash('success', 'تم الحفظ');
 
@@ -58,7 +70,15 @@ class PayrollController extends Controller
         $total = $calculator->forMonth($employee, $month)['total'];
 
         $record = $this->recordFor($employee, $month);
+        $record->treasury_id ??= Treasury::defaultFor($employee->region)?->id;
+
+        if ($record->treasury_id === null) {
+            abort(422, 'أضف خزينة لمنطقة '.Regions::LABELS[$employee->region].' أولاً');
+        }
+
         $record->paid_amount = number_format($total, 2, '.', '');
+        $record->payment_method ??= $employee->payment_method;
+        $record->account_number ??= $employee->account_number;
         $record->save();
 
         Inertia::flash('success', 'تم تسجيل دفع '.Money::format($total).' د.ل لـ '.$employee->name);
@@ -75,6 +95,11 @@ class PayrollController extends Controller
             'id' => $employee->id,
             'name' => $employee->name,
             'job_title' => $employee->job_title,
+            'region' => $employee->region,
+            'region_label' => Regions::LABELS[$employee->region] ?? $employee->region,
+            'payment_method' => $employee->payment_method,
+            'payment_method_label' => PaymentMethods::label($employee->payment_method),
+            'account_number' => $employee->account_number,
             'base_salary' => (float) $employee->base_salary,
             'start_month' => $employee->start_month,
             'attendance_mode' => $employee->attendance_mode,

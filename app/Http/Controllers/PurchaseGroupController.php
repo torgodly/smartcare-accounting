@@ -10,6 +10,7 @@ use App\Models\Receipt;
 use App\Services\Money;
 use App\Services\ReceiptStorage;
 use App\Services\RecurringInvoices;
+use App\Services\Regions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,20 +24,37 @@ class PurchaseGroupController extends Controller
      */
     public function index(Request $request, RecurringInvoices $recurring): Response
     {
+        return $this->grid($request, $recurring, PurchaseGroup::KIND_PURCHASE);
+    }
+
+    /**
+     * The expense groups grid.
+     */
+    public function expenses(Request $request, RecurringInvoices $recurring): Response
+    {
+        return $this->grid($request, $recurring, PurchaseGroup::KIND_EXPENSE);
+    }
+
+    /**
+     * Groups of one kind in the selected region with the month's totals.
+     */
+    private function grid(Request $request, RecurringInvoices $recurring, string $kind): Response
+    {
         $month = $this->selectedMonth($request);
         $recurring->ensureFor($month);
 
         $groups = PurchaseGroup::query()
+            ->inRegion(Regions::current($request))
+            ->where('kind', $kind)
             ->orderBy('sort_order')
             ->orderBy('id')
             ->with(['invoices' => fn ($query) => $query->where('month', $month)])
             ->get();
 
         return Inertia::render('Purchases/Index', [
+            'kind' => $kind,
             'groups' => $groups->map(fn (PurchaseGroup $group): array => [
-                'id' => $group->id,
-                'name' => $group->name,
-                'code' => $group->code,
+                ...self::presentGroup($group),
                 ...self::summary($group->invoices),
             ])->values(),
         ]);
@@ -52,12 +70,14 @@ class PurchaseGroupController extends Controller
 
         $invoices = $group->invoices()
             ->where('month', $month)
-            ->with('receipt')
+            ->with(['receipt', 'treasury', 'custody'])
             ->orderBy('sequence')
             ->get();
 
         return Inertia::render('Purchases/Show', [
-            'group' => ['id' => $group->id, 'name' => $group->name, 'code' => $group->code],
+            'group' => self::presentGroup($group),
+            'treasuries' => TreasuryController::options($group->region),
+            'custodies' => CustodyController::openOptions($group->region),
             'invoices' => $invoices->map(fn (Invoice $invoice): array => InvoiceController::present($invoice))->values(),
             'summary' => self::summary($invoices),
         ]);
@@ -103,7 +123,22 @@ class PurchaseGroupController extends Controller
 
         Inertia::flash('success', 'تم حذف المجموعة');
 
-        return redirect()->route('purchase-groups.index', ['month' => $this->selectedMonth($request)]);
+        return redirect()->route($group->kind === PurchaseGroup::KIND_EXPENSE ? 'expenses.index' : 'purchase-groups.index', ['month' => $this->selectedMonth($request)]);
+    }
+
+    /**
+     * @return array{id: int, name: string, code: string, region: string, region_label: string, kind: string}
+     */
+    public static function presentGroup(PurchaseGroup $group): array
+    {
+        return [
+            'id' => $group->id,
+            'name' => $group->name,
+            'code' => $group->code,
+            'region' => $group->region,
+            'region_label' => Regions::LABELS[$group->region] ?? $group->region,
+            'kind' => $group->kind,
+        ];
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasRegion;
 use Database\Factories\PurchaseGroupFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,15 +14,27 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $name
  * @property string $code
+ * @property string $region
+ * @property string $kind
  * @property int $sort_order
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'code', 'sort_order'])]
+#[Fillable(['name', 'code', 'region', 'kind', 'sort_order'])]
 class PurchaseGroup extends Model
 {
     /** @use HasFactory<PurchaseGroupFactory> */
-    use HasFactory;
+    use HasFactory, HasRegion;
+
+    public const KIND_PURCHASE = 'purchase';
+
+    public const KIND_EXPENSE = 'expense';
+
+    /** @var array<string, string> */
+    public const KIND_LABELS = [
+        self::KIND_PURCHASE => 'المشتريات',
+        self::KIND_EXPENSE => 'المصروفات',
+    ];
 
     /**
      * Give new groups a sort order equal to their id.

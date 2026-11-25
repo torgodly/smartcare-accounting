@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasRegion;
 use Database\Factories\EmployeeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,7 +15,10 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $name
  * @property string|null $job_title
+ * @property string $region
  * @property string $base_salary
+ * @property string $payment_method
+ * @property string|null $account_number
  * @property string $start_month
  * @property string $attendance_mode
  * @property string|null $shift_start
@@ -24,11 +28,11 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'job_title', 'base_salary', 'start_month', 'attendance_mode', 'shift_start', 'shift_end', 'absence_day_rate', 'sort_order'])]
+#[Fillable(['name', 'job_title', 'region', 'base_salary', 'payment_method', 'account_number', 'start_month', 'attendance_mode', 'shift_start', 'shift_end', 'absence_day_rate', 'sort_order'])]
 class Employee extends Model
 {
     /** @use HasFactory<EmployeeFactory> */
-    use HasFactory;
+    use HasFactory, HasRegion;
 
     public const MODE_TIME = 'time';
 

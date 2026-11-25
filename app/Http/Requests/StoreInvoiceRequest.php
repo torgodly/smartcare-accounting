@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Invoice;
 use App\Services\Months;
+use App\Services\Regions;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -36,6 +37,8 @@ class StoreInvoiceRequest extends FormRequest
             'reason' => ['nullable', 'string', 'max:5000'],
             'type' => ['required', Rule::in([Invoice::TYPE_ONCE, Invoice::TYPE_RECURRING])],
             'receipt_id' => ['nullable', 'uuid', 'exists:receipts,id'],
+            'treasury_id' => ['nullable', 'required_without:custody_id', 'prohibits:custody_id', 'integer', Regions::exists($this, 'treasuries')],
+            'custody_id' => ['nullable', 'required_without:treasury_id', 'integer', Regions::exists($this, 'custodies')->where('status', 'open')],
         ];
     }
 
@@ -50,6 +53,10 @@ class StoreInvoiceRequest extends FormRequest
             'price.gt' => 'اكتب السعر',
             'price.numeric' => 'اكتب السعر',
             'type.required' => 'اختر نوع الفاتورة',
+            'treasury_id.required_without' => 'اختر مصدر الدفع (خزينة أو عهدة)',
+            'custody_id.required_without' => 'اختر مصدر الدفع (خزينة أو عهدة)',
+            'treasury_id.prohibits' => 'اختر خزينة أو عهدة، وليس الاثنين',
+            'custody_id.exists' => 'هذه العهدة مغلقة',
         ];
     }
 }

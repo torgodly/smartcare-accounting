@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useMonth } from '@/hooks/use-month';
 import AppShell, { PageHeader } from '@/layouts/AppShell';
 import { monthLabel } from '@/lib/months';
-import type { Employee, PayrollRow, PayrollTotals } from '@/types';
+import type { Employee, PayrollRow, PayrollTotals, TreasuryRef } from '@/types';
 import { EmployeeDialog } from './EmployeeDialog';
 import { HistoryDialog } from './HistoryDialog';
 import { PaymentDialog } from './PaymentDialog';
@@ -21,9 +21,11 @@ type Row = { employee: Employee; payroll: PayrollRow };
 export default function SalariesIndex({
     rows,
     totals,
+    treasuries,
 }: {
     rows: Row[];
     totals: PayrollTotals;
+    treasuries: TreasuryRef[];
 }) {
     const { month } = useMonth();
     const [employeeDialog, setEmployeeDialog] = useState<{
@@ -136,9 +138,25 @@ export default function SalariesIndex({
                                             >
                                                 {row.employee.name}
                                             </button>
-                                            {row.employee.job_title && (
-                                                <div className="text-[13px] text-muted">
-                                                    {row.employee.job_title}
+                                            <div className="text-[13px] text-muted">
+                                                {[
+                                                    row.employee.job_title,
+                                                    row.employee.region_label,
+                                                    row.employee
+                                                        .payment_method_label,
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(' · ')}
+                                            </div>
+                                            {row.employee.account_number && (
+                                                <div
+                                                    dir="ltr"
+                                                    className="text-end font-mono text-[12px] text-muted"
+                                                >
+                                                    {
+                                                        row.employee
+                                                            .account_number
+                                                    }
                                                 </div>
                                             )}
                                         </td>
@@ -330,6 +348,7 @@ export default function SalariesIndex({
                     open
                     employee={payment.employee}
                     payroll={payment.payroll}
+                    treasuries={treasuries}
                     title={`${payment.employee.name} · ${monthLabel(month)}`}
                     onOpenChange={(open) => !open && setPayment(null)}
                 />

@@ -27,6 +27,7 @@
                 <th>المستحق</th>
                 <th>المدفوع</th>
                 <th>المتبقي</th>
+                <th>الخلاص</th>
                 <th>الحالة</th>
             </tr>
         </thead>
@@ -43,6 +44,9 @@
                     <td class="num"><b>{{ $money($p['total']) }}</b></td>
                     <td class="num">{{ $money($p['paid']) }}</td>
                     <td class="num">{{ $money($p['remaining']) }}</td>
+                    @php($method = $p['payment_method'] ?? $row['employee']->payment_method)
+                    @php($account = $p['account_number'] ?? $row['employee']->account_number)
+                    <td>{{ \App\Services\PaymentMethods::label($method) }}@if ($account)<br><span class="num" style="font-size: 8.5pt;">{{ $account }}</span>@endif</td>
                     <td>
                         @if ($p['status'] === 'paid')
                             <span class="ok">مدفوع</span>
@@ -54,7 +58,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="10" class="muted" style="text-align: center;">لا يوجد موظفون في هذا الشهر</td></tr>
+                <tr><td colspan="11" class="muted" style="text-align: center;">لا يوجد موظفون في هذا الشهر</td></tr>
             @endforelse
         </tbody>
         <tfoot>
@@ -68,6 +72,7 @@
                 <td class="num">{{ $money($totals['total']) }}</td>
                 <td class="num">{{ $money($totals['paid']) }}</td>
                 <td class="num">{{ $money($totals['remaining']) }}</td>
+                <td></td>
                 <td></td>
             </tr>
         </tfoot>

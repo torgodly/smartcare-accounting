@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\PurchaseGroup;
 use App\Services\Months;
 use App\Services\PdfReports;
+use App\Services\Regions;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class ReportController extends Controller
@@ -12,11 +14,11 @@ class ReportController extends Controller
     /**
      * Salary sheet PDF.
      */
-    public function salaries(string $month, PdfReports $reports): Response
+    public function salaries(Request $request, string $month, PdfReports $reports): Response
     {
         abort_unless(Months::isValid($month), 404);
 
-        return $this->download($reports->salaries($month), "SmartCare-Salaries-{$month}.pdf");
+        return $this->download($reports->salaries($month, Regions::current($request)), "SmartCare-Salaries-{$month}.pdf");
     }
 
     /**

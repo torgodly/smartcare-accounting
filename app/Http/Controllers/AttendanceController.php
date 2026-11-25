@@ -9,6 +9,7 @@ use App\Services\AttendanceService;
 use App\Services\Money;
 use App\Services\Months;
 use App\Services\PayrollCalculator;
+use App\Services\Regions;
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class AttendanceController extends Controller
     public function index(Request $request, AttendanceService $attendance): Response
     {
         $month = $this->selectedMonth($request);
-        $all = Employee::query()->ordered()->get();
+        $all = Employee::query()->inRegion(Regions::current($request))->ordered()->get();
 
         $employees = $all
             ->filter(fn (Employee $employee): bool => $employee->tracksAttendance() && $employee->start_month <= $month)
@@ -78,7 +79,7 @@ class AttendanceController extends Controller
     public function markAll(MarkAllAttendanceRequest $request, AttendanceService $attendance): JsonResponse
     {
         return response()->json([
-            'count' => $attendance->markAll($this->validDate($request->validated('date'))),
+            'count' => $attendance->markAll($this->validDate($request->validated('date')), Regions::current($request)),
         ]);
     }
 

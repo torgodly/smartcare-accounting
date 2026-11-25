@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\PayrollRecord;
 use App\Models\PurchaseGroup;
 use App\Models\Setting;
+use App\Models\Treasury;
 use App\Services\Months;
 use App\Services\RecurringInvoices;
 use App\Services\SerialNumber;
@@ -30,6 +31,8 @@ class DemoSeeder extends Seeder
         $current = Months::current();
         $previous = Months::add($current, -1);
 
+        $treasury = Treasury::defaultFor('east')?->id;
+
         Setting::setValue('work_start', '08:00');
         Setting::setValue('work_end', '16:00');
 
@@ -37,9 +40,9 @@ class DemoSeeder extends Seeder
         $mariam = Employee::query()->create(['name' => 'مريم علي (مثال)', 'job_title' => 'محاسبة', 'base_salary' => 2200, 'start_month' => $previous, 'attendance_mode' => Employee::MODE_TIME]);
         $khaled = Employee::query()->create(['name' => 'خالد عمر (مثال)', 'job_title' => 'سائق', 'base_salary' => 1400, 'start_month' => $previous, 'attendance_mode' => Employee::MODE_NOTIME]);
 
-        PayrollRecord::query()->create(['employee_id' => $ahmed->id, 'month' => $previous, 'base_salary' => 1800, 'bonus' => 200, 'paid_amount' => 2000]);
-        PayrollRecord::query()->create(['employee_id' => $mariam->id, 'month' => $previous, 'base_salary' => 2200, 'paid_amount' => 2200]);
-        PayrollRecord::query()->create(['employee_id' => $khaled->id, 'month' => $previous, 'base_salary' => 1400, 'manual_deduction' => 100, 'paid_amount' => 800]);
+        PayrollRecord::query()->create(['employee_id' => $ahmed->id, 'month' => $previous, 'base_salary' => 1800, 'bonus' => 200, 'paid_amount' => 2000, 'treasury_id' => $treasury]);
+        PayrollRecord::query()->create(['employee_id' => $mariam->id, 'month' => $previous, 'base_salary' => 2200, 'paid_amount' => 2200, 'treasury_id' => $treasury]);
+        PayrollRecord::query()->create(['employee_id' => $khaled->id, 'month' => $previous, 'base_salary' => 1400, 'manual_deduction' => 100, 'paid_amount' => 800, 'treasury_id' => $treasury]);
 
         $days = [
             [$ahmed, [['present', '08:00', null], ['present', '08:10', null], ['excuse', null, 'موعد طبي']]],
@@ -65,11 +68,11 @@ class DemoSeeder extends Seeder
         $internal = PurchaseGroup::query()->create(['name' => 'مشتريات داخلية (مثال)', 'code' => 'IN']);
         $companies = PurchaseGroup::query()->create(['name' => 'شركات (مثال)', 'code' => 'CO']);
 
-        $serials->createInvoice($internal, $previous, ['title' => 'اشتراك إنترنت المكتب (مثال)', 'price' => 350, 'type' => Invoice::TYPE_RECURRING, 'reason' => 'الاشتراك الشهري']);
+        $serials->createInvoice($internal, $previous, ['title' => 'اشتراك إنترنت المكتب (مثال)', 'price' => 350, 'type' => Invoice::TYPE_RECURRING, 'reason' => 'الاشتراك الشهري', 'treasury_id' => $treasury]);
         $recurring->ensureFor($current);
 
-        $serials->createInvoice($internal, $current, ['title' => 'أحبار طابعة (مثال)', 'price' => 185, 'type' => Invoice::TYPE_ONCE]);
-        $serials->createInvoice($internal, $current, ['title' => 'مياه وقهوة للمكتب (مثال)', 'price' => 96.50, 'type' => Invoice::TYPE_ONCE]);
-        $serials->createInvoice($companies, $current, ['title' => 'خدمة صيانة الحواسيب (مثال)', 'price' => 1200, 'type' => Invoice::TYPE_ONCE]);
+        $serials->createInvoice($internal, $current, ['title' => 'أحبار طابعة (مثال)', 'price' => 185, 'type' => Invoice::TYPE_ONCE, 'treasury_id' => $treasury]);
+        $serials->createInvoice($internal, $current, ['title' => 'مياه وقهوة للمكتب (مثال)', 'price' => 96.50, 'type' => Invoice::TYPE_ONCE, 'treasury_id' => $treasury]);
+        $serials->createInvoice($companies, $current, ['title' => 'خدمة صيانة الحواسيب (مثال)', 'price' => 1200, 'type' => Invoice::TYPE_ONCE, 'treasury_id' => $treasury]);
     }
 }
