@@ -13,16 +13,20 @@
     "dependencies": {
         "@inertiajs/react": "^3.0.0",
         "@inertiajs/vite": "^3.0.0",
+        "@number-flow/react": "0.6.2",
         "@tailwindcss/vite": "^4.1.11",
+        "@tanstack/react-table": "9.3.1",
         "@types/react": "^19.2.0",
         "@types/react-dom": "^19.2.0",
         "@vitejs/plugin-react": "^6.1.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
+        "cmdk": "1.1.1",
         "concurrently": "^10.0.3",
         "date-fns": "^4.4.0",
         "laravel-vite-plugin": "^3.1",
         "lucide-react": "^1.68.0",
+        "motion": "14.6.0",
         "qrcode.react": "^4.2.0",
         "radix-ui": "^1.8.1",
         "react": "^19.2.0",
@@ -31,6 +35,7 @@
         "tailwind-merge": "^3.0.1",
         "tailwindcss": "^4.0.0",
         "typescript": "^5.7.2",
+        "vaul": "1.1.2",
         "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0"
     },
     "devDependencies": {

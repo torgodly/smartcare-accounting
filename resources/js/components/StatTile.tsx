@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * A --sunk tile: small muted label above a big value.
+ * Legacy sunken tile (label above a value). New code uses StatCard. Removed in the cleanup pass.
  */
 export function StatTile({
     label,
@@ -16,11 +16,11 @@ export function StatTile({
     return (
         <div
             className={cn(
-                'flex min-w-0 flex-col gap-1 rounded-md bg-sunk px-2 py-2.5 sm:px-3',
+                'flex min-w-0 flex-col gap-1 rounded-md bg-surface-2 px-2 py-2.5 sm:px-3',
                 className,
             )}
         >
-            <span className="text-[13px] text-muted">{label}</span>
+            <span className="text-label-sm text-ink-3">{label}</span>
             <div className="min-w-0">{children}</div>
         </div>
     );

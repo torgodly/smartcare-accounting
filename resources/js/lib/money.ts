@@ -1,3 +1,6 @@
+/** The minus sign used for deductions (U+2212, never a hyphen). */
+export const MINUS = '−';
+
 /**
  * Format a number with Western digits and up to two decimals, e.g. 1,250.5.
  */

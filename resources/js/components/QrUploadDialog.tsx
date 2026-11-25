@@ -1,15 +1,17 @@
 import { QRCodeSVG } from 'qrcode.react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 import {
     destroy as destroyToken,
     show as showToken,
     store as storeToken,
 } from '@/actions/App/Http/Controllers/UploadTokenController';
-import { AppDialog } from '@/components/AppDialog';
+import { ResponsiveDialog } from '@/components/ResponsiveDialog';
+import { Skeleton } from '@/components/Skeleton';
 import { StatusPill } from '@/components/StatusPill';
 import { Button } from '@/components/ui/button';
 import { http } from '@/lib/http';
+import { toast } from '@/lib/toast';
+import { cn } from '@/lib/utils';
 import type { ReceiptRef } from '@/types';
 
 type TokenResponse = {
@@ -20,8 +22,80 @@ type TokenResponse = {
 };
 type PollResponse = { state: string; receipt: ReceiptRef | null };
 
+const RING_SIZE = 64;
+const RING_STROKE = 4;
+const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
+const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
+
+/**
+ * 64px countdown ring with mm:ss in the middle (warn under 1:00, bad at 0).
+ */
+function CountdownRing({
+    secondsLeft,
+    total,
+}: {
+    secondsLeft: number;
+    total: number;
+}) {
+    const remaining = Math.max(secondsLeft, 0);
+    const fraction = total > 0 ? remaining / total : 0;
+    const minutes = Math.floor(remaining / 60);
+    const seconds = remaining % 60;
+
+    return (
+        <div
+            className="relative flex size-16 shrink-0 items-center justify-center"
+            role="timer"
+            aria-live="off"
+        >
+            <svg
+                width={RING_SIZE}
+                height={RING_SIZE}
+                viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+                className="absolute inset-0 -rotate-90"
+                aria-hidden
+            >
+                <circle
+                    cx={RING_SIZE / 2}
+                    cy={RING_SIZE / 2}
+                    r={RING_RADIUS}
+                    fill="none"
+                    stroke="var(--sunken)"
+                    strokeWidth={RING_STROKE}
+                />
+                <circle
+                    cx={RING_SIZE / 2}
+                    cy={RING_SIZE / 2}
+                    r={RING_RADIUS}
+                    fill="none"
+                    stroke="var(--cyan-700)"
+                    strokeWidth={RING_STROKE}
+                    strokeLinecap="round"
+                    strokeDasharray={RING_LENGTH}
+                    strokeDashoffset={RING_LENGTH * (1 - fraction)}
+                    className="transition-[stroke-dashoffset] duration-1000 ease-linear"
+                />
+            </svg>
+            <span
+                className={cn(
+                    'num relative text-[15px] leading-5 font-bold',
+                    remaining === 0
+                        ? 'text-bad-700'
+                        : remaining < 60
+                          ? 'text-warn-700'
+                          : 'text-ink-1',
+                )}
+            >
+                {String(minutes).padStart(2, '0')}:
+                {String(seconds).padStart(2, '0')}
+            </span>
+        </div>
+    );
+}
+
 /**
  * Shows a one-time QR code (10 minutes); polls every 2 s until the phone sends the photo.
+ * Closing deletes the token unless a photo was received; a photo is accepted only once.
  */
 export function QrUploadDialog({
     open,
@@ -34,6 +108,7 @@ export function QrUploadDialog({
 }) {
     const [token, setToken] = useState<TokenResponse | null>(null);
     const [secondsLeft, setSecondsLeft] = useState(0);
+    const [total, setTotal] = useState(600);
     const [error, setError] = useState<string | null>(null);
     const tokenRef = useRef<string | null>(null);
     const receivedRef = useRef(false);
@@ -47,6 +122,7 @@ export function QrUploadDialog({
             tokenRef.current = created.token;
             setToken(created);
             setSecondsLeft(created.expires_in);
+            setTotal(created.expires_in);
         } catch (exception) {
             setError((exception as Error).message);
         }
@@ -88,7 +164,7 @@ export function QrUploadDialog({
                 if (result.receipt && !receivedRef.current) {
                     receivedRef.current = true;
                     tokenRef.current = null;
-                    toast('وصلت صورة الإيصال من الهاتف');
+                    toast.success('وصلت صورة الإيصال من الهاتف');
                     onReceived(result.receipt);
                 }
             } catch {
@@ -114,60 +190,71 @@ export function QrUploadDialog({
     }
 
     const expired = token !== null && secondsLeft <= 0;
-    const minutes = Math.floor(Math.max(secondsLeft, 0) / 60);
-    const seconds = Math.max(secondsLeft, 0) % 60;
 
     return (
-        <AppDialog
+        <ResponsiveDialog
             open={open}
             onOpenChange={(next) => !next && close()}
             title="التقاط الإيصال بالهاتف"
+            size="sm"
+            layer="nested"
         >
-            <div className="flex flex-col items-center gap-4 py-2 text-center">
-                <div className="rounded-[10px] border border-line bg-white p-4">
-                    {token ? (
-                        <QRCodeSVG
-                            value={token.url}
-                            size={220}
-                            marginSize={0}
-                            className={expired ? 'opacity-20' : ''}
+            <div className="flex flex-col items-center gap-5 text-center">
+                <div className="flex items-center gap-5 max-sm:flex-col">
+                    <div className="rounded-lg border border-line-1 bg-white p-3">
+                        {token ? (
+                            <QRCodeSVG
+                                value={token.url}
+                                size={208}
+                                marginSize={0}
+                                className={cn(
+                                    'transition-[opacity,filter] duration-200',
+                                    expired && 'opacity-20 blur-[3px]',
+                                )}
+                            />
+                        ) : (
+                            <Skeleton
+                                shape="control"
+                                className="size-[208px]"
+                            />
+                        )}
+                    </div>
+                    {token && (
+                        <CountdownRing
+                            secondsLeft={secondsLeft}
+                            total={total}
                         />
-                    ) : (
-                        <div className="size-[220px] animate-pulse rounded bg-sunk" />
                     )}
                 </div>
 
-                {token && (
-                    <div
-                        className={`num font-display text-[34px] font-semibold ${expired ? 'text-bad' : ''}`}
-                    >
-                        {String(minutes).padStart(2, '0')}:
-                        {String(seconds).padStart(2, '0')}
-                    </div>
-                )}
-
-                <p className="max-w-sm text-[14px] text-muted">
+                <p className="max-w-sm text-body-sm text-ink-3">
                     امسح الرمز بكاميرا الهاتف، صوّر الإيصال واضغط «إرسال». ستظهر
                     الصورة هنا تلقائياً. لا يحتاج الهاتف إلى تسجيل دخول.
                 </p>
 
-                {error && <p className="text-[14px] text-bad">{error}</p>}
+                {error && <p className="text-body-sm text-bad-700">{error}</p>}
 
                 {expired ? (
                     <div className="flex flex-col items-center gap-3">
-                        <StatusPill kind="bad">انتهت صلاحية الرمز</StatusPill>
+                        <StatusPill kind="bad" size="lg">
+                            انتهت صلاحية الرمز
+                        </StatusPill>
                         <Button onClick={() => void create()}>
                             إنشاء رمز جديد
                         </Button>
                     </div>
                 ) : (
                     token && (
-                        <StatusPill kind="neutral">
+                        <p className="flex items-center gap-2 text-label-sm text-ink-2">
+                            <span
+                                aria-hidden
+                                className="size-2 animate-pulse-dot rounded-full bg-ok-500"
+                            />
                             بانتظار الصورة من الهاتف…
-                        </StatusPill>
+                        </p>
                     )
                 )}
             </div>
-        </AppDialog>
+        </ResponsiveDialog>
     );
 }
